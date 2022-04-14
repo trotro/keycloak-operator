@@ -306,6 +306,7 @@ func KeycloakDeploymentReconciled(cr *v1alpha1.Keycloak, currentState *v13.State
 				},
 			},
 			VolumeMounts:   KeycloakVolumeMounts(cr, KeycloakExtensionPath, dbSSLSecret, KeycloakCertificatePath),
+			Lifecycle:      lifecycle(),
 			LivenessProbe:  livenessProbe(),
 			ReadinessProbe: readinessProbe(),
 			Env:            getKeycloakEnv(cr, dbSecret),
@@ -334,6 +335,10 @@ func KeycloakVolumeMounts(cr *v1alpha1.Keycloak, extensionsPath string, dbSSLSec
 		{
 			Name:      KeycloakProbesName,
 			MountPath: "/probes",
+		},
+		{
+			Name:      KeycloakLifecyclesName,
+			MountPath: "/lifecycles",
 		},
 	}
 
@@ -386,6 +391,17 @@ func KeycloakVolumes(cr *v1alpha1.Keycloak, dbSSLSecret *v1.Secret) []v1.Volume 
 				ConfigMap: &v1.ConfigMapVolumeSource{
 					LocalObjectReference: v1.LocalObjectReference{
 						Name: KeycloakProbesName,
+					},
+					DefaultMode: &[]int32{0555}[0],
+				},
+			},
+		},
+		{
+			Name: KeycloakLifecyclesName,
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: KeycloakLifecyclesName,
 					},
 					DefaultMode: &[]int32{0555}[0],
 				},
@@ -451,6 +467,20 @@ func addVolumesFromKeycloakCR(cr *v1alpha1.Keycloak, volumes []v1.Volume) []v1.V
 		}
 	}
 	return volumes
+}
+
+func lifecycle() *v1.Lifecycle {
+	return &v1.Lifecycle{
+		postStart: v1.Handler{
+			Exec: &v1.ExecAction{
+				Command: []string{
+					"/bin/sh",
+					"-c",
+					"/lifecycles" + LifecyclePostStartProperty,
+				},
+			},
+		},
+	}
 }
 
 func livenessProbe() *v1.Probe {

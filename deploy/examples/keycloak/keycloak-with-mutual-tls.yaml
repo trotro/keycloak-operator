@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jboss-config-script
+data:
+  script.cli: |
+    # Configurex509 Mutual TLS
+    # Add ssl-realm
+    /core-service=management/security-realm=ssl-realm/:add
+    /core-service=management/security-realm=ssl-realm/server-identity=ssl/:add(keystore-path="${env.HTTPS_KEYSTORE_DIR}/${env.HTTPS_KEYSTORE}", keystore-password="${env.HTTPS_PASSWORD}")
+    /core-service=management/security-realm=ssl-realm/authentication=truststore/:add(keystore-path="${env.SSO_TRUSTSTORE_DIR}/${env.SSO_TRUSTSTORE}", keystore-password="${env.SSO_TRUSTSTORE_PASSWORD}")
+    # Make default-server https listener use ssl-realm
+    /subsystem=undertow/server=default-server/https-listener=https/:write-attribute(name="security-realm", value="ssl-realm")
+    /subsystem=undertow/server=default-server/https-listener=https/:write-attribute(name="verify-client", value="REQUESTED")
+    # Add x509cert-lookup with haproxy SPI provider
+    /subsystem=keycloak-server/spi=x509cert-lookup/provider=haproxy/:add(enabled=true)
+    /subsystem=keycloak-server/spi=x509cert-lookup/provider=haproxy/:map-put(name=properties, key=sslClientCert, value=SSL_CLIENT_CERT)
+    /subsystem=keycloak-server/spi=x509cert-lookup/provider=haproxy/:map-put(name=properties, key=sslCertChainPrefix, value=CERT_CHAIN)
+    /subsystem=keycloak-server/spi=x509cert-lookup/provider=haproxy/:map-put(name=properties, key=certificateChainLength, value=10)
+    # Add DEBUG logs for org.keycloak.events
+    /subsystem=logging/logger=org.keycloak.events/:add(level=DEBUG)
+    # Reload server to apply configs
+    reload
+...
+---
+apiVersion: keycloak.org/v1alpha1
+kind: Keycloak
+metadata:
+  name: example-keycloak
+  labels:
+    app: sso
+spec:
+  instances: 1
+  extensions:
+    - https://github.com/aerogear/keycloak-metrics-spi/releases/download/1.0.4/keycloak-metrics-spi-1.0.4.jar
+  externalAccess:
+    enabled: True
+  #podDisruptionBudget:
+  #  enabled: True
+  # User needs to provision the external database
+  #externalDatabase:
+  #  enabled: True
+  keycloakDeploymentSpec:
+    experimental:
+      volumes:
+        defaultMode: 0777
+        items:
+          - name: jboss-config-script
+            mountPath: /home/jboss/script.cli
+            subPath: script.cli
+            configMaps:
+              - jboss-config-script
+  profile: RHSSO
+...

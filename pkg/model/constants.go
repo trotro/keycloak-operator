@@ -9,6 +9,7 @@ const (
 	PostgresqlBackupPersistentVolumeName = ApplicationName + "-backup"
 	PostgresqlDeploymentName             = ApplicationName + "-postgresql"
 	KeycloakProbesName                   = ApplicationName + "-probes"
+	KeycloakLifecyclesName               = ApplicationName + "-lifecycles"
 	KeycloakMetricsRouteName             = ApplicationName + "-metrics-rewrite"
 	KeycloakMetricsRoutePath             = "/auth/realms/master/metrics"
 	KeycloakMetricsRouteRewritePath      = "/auth/realms/master"
@@ -39,6 +40,7 @@ const (
 	AdminUsernameProperty                      = "ADMIN_USERNAME"
 	AdminPasswordProperty                      = "ADMIN_PASSWORD"
 	ServingCertSecretName                      = "sso-x509-https-secret" // nolint
+	LifecyclePostStartProperty                 = "jboss_configure.sh"
 	LivenessProbeProperty                      = "liveness_probe.sh"
 	ReadinessProbeProperty                     = "readiness_probe.sh"
 	RouteLoadBalancingStrategy                 = "source"
